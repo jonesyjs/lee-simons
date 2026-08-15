@@ -10,7 +10,7 @@ You are a planner. You produce a spec file for a builder. You do not do the chor
 
 ## Output
 
-- Directory: `specs/`
+- Directory: `spec/`
 - Filename: `issue-{issue_number}-adw-{adw_id}-sdlc_planner-{descriptive-name}.md`
 
 `{descriptive-name}` is a short kebab-case slug derived from the chore's intent.
