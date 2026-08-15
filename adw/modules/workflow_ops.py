@@ -23,10 +23,14 @@ class ReviewResult:
 @audit(type=AuditType.STEP)
 def plan(issue: str, issue_id: str, adw_id: str, worktree: str) -> Result:
     command = claude.generate(f"/classify_issue {issue}").strip()
-    spec_path = claude.generate(f"{command} {issue_id} {adw_id} {issue}", cwd=worktree).strip()
+    written = claude.generate(f"{command} {issue_id} {adw_id} {issue}", cwd=worktree).strip()
 
-    if not os.path.exists(os.path.join(worktree, spec_path)):
-        raise RuntimeError(f"plan file not found in worktree: {spec_path}")
+    if not os.path.exists(os.path.join(worktree, written)):
+        raise RuntimeError(f"plan file not found in worktree: {written}")
+
+    # Capture the agent's spec into the pipeline outputs, named by adw_id.
+    spec_path = os.path.join("data", "outputs", "specs", f"{adw_id}.md")
+    utils.write_file(spec_path, utils.read_file(os.path.join(worktree, written)))
 
     return Result(
         description="plan created",
@@ -36,7 +40,7 @@ def plan(issue: str, issue_id: str, adw_id: str, worktree: str) -> Result:
 
 @audit(type=AuditType.STEP)
 def build(spec_path: str, path: str) -> Result:
-    spec = utils.read_file(os.path.join(path, spec_path))  # spec_path is relative to the worktree
+    spec = utils.read_file(spec_path)  # spec_path is the pipeline output (data/outputs/specs/…)
     _implement(spec, path)
     git_ops.commit_work(path, "build: implement spec")
 
@@ -45,7 +49,7 @@ def build(spec_path: str, path: str) -> Result:
 
 def review(spec_path: str, path: str, issue_id: str) -> ReviewResult:
     diff = git_ops.get_diff(path)
-    spec = utils.read_file(os.path.join(path, spec_path))
+    spec = utils.read_file(spec_path)
 
     success, summary = _review(diff, spec)
     git_ops.comment(issue_id, "\n".join(f"- {point}" for point in summary))
