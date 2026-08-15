@@ -175,15 +175,20 @@ class TestRecognition(unittest.TestCase):
 class TestArgvBuilding(unittest.TestCase):
     """The command surface: one function, one command, variation via inputs."""
 
-    def test_generate_builds_bare_argv(self):
+    def test_generate_builds_argv_with_skip_permissions(self):
         with mock.patch.object(ClaudeClient, "call", return_value="out") as call:
             ClaudeClient().generate("hi")
-            call.assert_called_once_with(["claude", "-p", "hi"])
+            call.assert_called_once_with(
+                ["claude", "-p", "hi", "--dangerously-skip-permissions"], cwd=None
+            )
 
-    def test_generate_adds_model_when_given(self):
+    def test_generate_adds_model_and_cwd_when_given(self):
         with mock.patch.object(ClaudeClient, "call", return_value="out") as call:
-            ClaudeClient().generate("hi", model="sonnet")
-            call.assert_called_once_with(["claude", "-p", "hi", "--model", "sonnet"])
+            ClaudeClient().generate("hi", cwd="/tmp/wt", model="sonnet")
+            call.assert_called_once_with(
+                ["claude", "-p", "hi", "--dangerously-skip-permissions", "--model", "sonnet"],
+                cwd="/tmp/wt",
+            )
 
     def test_worktree_add_builds_argv(self):
         with mock.patch.object(GitClient, "call", return_value="out") as call:

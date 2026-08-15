@@ -7,11 +7,13 @@ class SubprocessClient(BaseClient):
     timeout: float = 120.0
     transient_signatures: tuple[str, ...] = ()
 
-    def _invoke(self, argv: list[str]) -> str:
-        """One raw subprocess call. Classifies the outcome for the base."""
+    def _invoke(self, argv: list[str], cwd: str | None = None) -> str:
+        """One raw subprocess call. Classifies the outcome for the base.
+
+        `cwd` runs the command in a given directory (e.g. a worktree)."""
         try:
             result = subprocess.run(
-                argv, capture_output=True, text=True, timeout=self.timeout
+                argv, capture_output=True, text=True, timeout=self.timeout, cwd=cwd
             )
         except subprocess.TimeoutExpired as exc:
             raise ClientError("subprocess timed out", transient=True) from exc

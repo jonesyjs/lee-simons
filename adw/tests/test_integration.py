@@ -1,6 +1,7 @@
 """Tests for pipeline integration — audit decorator, context, sinks (Phase 6)."""
 
 import json
+import tempfile
 import unittest
 from unittest import mock
 
@@ -15,9 +16,10 @@ from modules.lib.log import (
     reset_appenders,
     set_appenders,
     set_run_context,
-    set_stage,
 )
 from modules.lib.log.models.events import AuditType, OperationalLogEvent, OperationalType
+from modules.lib.state import RunStateModel
+from modules.lib.state import create as create_state
 
 
 class RecordingSink(Sink):
@@ -30,13 +32,19 @@ class RecordingSink(Sink):
 
 class AuditTestCase(unittest.TestCase):
     def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
         self.sink = RecordingSink()
         set_appenders([Appender(self.sink, filter=is_audit)])
-        set_run_context("adw-99", "issue-7")
-        set_stage(Stage.PLAN)
+        set_run_context("adw-99", "issue-7", self.tmp.name)
+        # stage lives in state now — the logger reads it from there
+        create_state(
+            RunStateModel(adw_id="adw-99", issue_id="issue-7", stage="plan"),
+            root=self.tmp.name,
+        )
 
     def tearDown(self):
         reset_appenders()
+        self.tmp.cleanup()
 
 
 class TestAuditDecorator(AuditTestCase):

@@ -43,7 +43,7 @@ class TestSinks(unittest.TestCase):
             s = FileSink("adw-1", root=root)
             s.write('{"n": 1}')
             s.write('{"n": 2}')
-            path = os.path.join(root, "adw-1", "events.jsonl")
+            path = os.path.join(root, "adw-1.jsonl")
             with open(path, encoding="utf-8") as f:
                 lines = f.read().splitlines()
             self.assertEqual([json.loads(x)["n"] for x in lines], [1, 2])

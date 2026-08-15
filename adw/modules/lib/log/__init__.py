@@ -22,7 +22,6 @@ from modules.lib.log.models.context import (
     current_issue_id,
     current_stage,
     set_run_context,
-    set_stage,
 )
 from modules.lib.log.delivery.filters import is_audit, is_operational, min_level
 from modules.lib.log.delivery.layouts import JsonLinesLayout, Layout, MessageLayout
@@ -63,7 +62,6 @@ __all__ = [
     "audit",
     "Result",
     "set_run_context",
-    "set_stage",
     "current_adw_id",
     "current_issue_id",
     "current_stage",

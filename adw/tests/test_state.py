@@ -1,4 +1,4 @@
-"""Tests for state management — RunState + the JSON DAL."""
+"""Tests for state management — RunStateModel + the JSON DAL."""
 
 import json
 import os
@@ -8,8 +8,7 @@ from dataclasses import FrozenInstanceError, replace
 
 from modules.lib.state import (
     InvalidState,
-    PlanType,
-    RunState,
+    RunStateModel,
     StateNotFound,
     create,
     read,
@@ -19,15 +18,14 @@ from modules.lib.state import (
 
 
 def _state(branch=None):
-    return RunState(adw_id="adw-1", issue_id="42", plan_type=PlanType.FEATURE,
-                    branch_name=branch)
+    return RunStateModel(adw_id="adw-1", issue_id="42", branch_name=branch)
 
 
 class TestRunState(unittest.TestCase):
     def test_fields(self):
         s = _state()
         self.assertEqual(s.adw_id, "adw-1")
-        self.assertEqual(s.plan_type, "feature")  # StrEnum == str
+        self.assertEqual(s.issue_id, "42")
         self.assertIsNone(s.branch_name)
 
     def test_is_immutable(self):
@@ -46,7 +44,7 @@ class TestRunState(unittest.TestCase):
 class TestPaths(unittest.TestCase):
     def test_state_path(self):
         self.assertEqual(
-            state_path("abc", root="/tmp"), "/tmp/adw-abc/run-state.json"
+            state_path("abc", root="/tmp"), "/tmp/data/state/abc.json"
         )
 
 
@@ -60,7 +58,6 @@ class TestDAL(unittest.TestCase):
         create(_state(), root=self.root)
         got = read("adw-1", root=self.root)
         self.assertEqual(got, _state())
-        self.assertIsInstance(got.plan_type, PlanType)  # enum restored
 
     def test_update_sets_branch_and_persists(self):
         create(_state(), root=self.root)
@@ -83,7 +80,7 @@ class TestDAL(unittest.TestCase):
     def test_atomic_write_leaves_no_temp(self):
         create(_state(), root=self.root)
         run_folder = os.path.dirname(state_path("adw-1", root=self.root))
-        self.assertEqual(os.listdir(run_folder), ["run-state.json"])  # no .tmp
+        self.assertEqual(os.listdir(run_folder), ["adw-1.json"])  # no .tmp
 
     def test_create_overwrites(self):
         create(_state(), root=self.root)
@@ -96,8 +93,7 @@ class TestDAL(unittest.TestCase):
             data = json.load(f)
         self.assertEqual(
             data,
-            {"adw_id": "adw-1", "issue_id": "42", "plan_type": "feature",
-             "branch_name": "b"},
+            {"adw_id": "adw-1", "issue_id": "42", "branch_name": "b", "stage": None},
         )
 
 

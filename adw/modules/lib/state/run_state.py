@@ -1,27 +1,22 @@
-"""RunState — the typed, write-once metadata contract for a pipeline run.
+"""RunStateModel — the typed metadata contract for a pipeline run.
 
-Holds only identifiers (not artifacts — those live in the git branch). Every
-field is immutable; `branch_name` is the one set late (after branch generation)
-via `dataclasses.replace`, producing a new frozen instance rather than mutating.
+Holds run identifiers plus the current pipeline stage (so an external reader can
+see where a run is without parsing the logs). `branch_name` and `stage` are set
+after start via `dataclasses.replace`, producing a new frozen instance each time.
 
 Artifact locations are NOT stored — they are computed on demand from these ids +
 branch + a pipeline-supplied step name (see the SA doc).
+
+Naming: model classes carry the `Model` suffix so they can live flat alongside
+behaviour files, without a separate models/ subpackage.
 """
 
 from dataclasses import dataclass
-from enum import StrEnum
-
-
-class PlanType(StrEnum):
-    """Classifies a run; determines which workflow steps execute."""
-
-    FEATURE = "feature"
-    PATCH = "patch"
 
 
 @dataclass(frozen=True)
-class RunState:
+class RunStateModel:
     adw_id: str          # unique run id (guaranteed unique upstream)
     issue_id: str        # the git issue the run stems from
-    plan_type: PlanType  # feature | patch
-    branch_name: str | None = None  # set last, after branch generation, then frozen
+    branch_name: str | None = None  # set after branch generation
+    stage: str | None = None         # current pipeline stage (plan/build/review/document)

@@ -19,3 +19,9 @@ class GitHubClient(SubprocessClient):
 
     def fetch_issue(self, issue: str) -> str:
         return self.call(["gh", "issue", "view", str(issue), "--json", "title,body"])
+
+    def list_open_issues(self) -> str:
+        return self.call(["gh", "issue", "list", "--state", "open", "--json", "number,body"])
+
+    def issue_comments(self, issue: str) -> str:
+        return self.call(["gh", "issue", "view", str(issue), "--json", "comments"])

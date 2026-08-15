@@ -5,7 +5,7 @@ intent; the clients below are blind to the goal. Each public operation returns a
 `Result` (description + payload) and is audited.
 """
 
-from enum import StrEnum
+import json
 
 from modules.claude_client import ClaudeClient
 from modules.git_client import GitClient
@@ -16,16 +16,9 @@ claude = ClaudeClient()
 git = GitClient()
 github = GitHubClient()
 
-
-class ProblemClass(StrEnum):
-    """The classification of an issue; selects meta-prompt + prime routing.
-
-    Kept separate from State's `plan_type` for now (they may converge later).
-    """
-
-    FEATURE = "feature"
-    BUG = "bug"
-    CHORE = "chore"
+# Every comment the pipeline posts carries this marker so the trigger's loop
+# guard can recognise (and ignore) its own comments — never re-triggering a run.
+BOT_IDENTIFIER = "[ADW-AGENTS]"
 
 
 # --- git operations ---
@@ -59,20 +52,21 @@ def fetch_issue(issue: str) -> str:
 
 
 def comment(issue: str, body: str) -> str:
-    """Post a comment to the issue (e.g. the review summary)."""
+    """Post a comment to the issue, tagged so the trigger won't re-fire on it."""
+    if not body.startswith(BOT_IDENTIFIER):
+        body = f"{BOT_IDENTIFIER} {body}"
     return github.comment(issue, body)
 
 
-# --- issue operations ---
+def list_issues() -> list[dict]:
+    """Open issues as [{'number', 'body'}, ...]."""
+    return json.loads(github.list_open_issues())
 
 
-@audit(type=AuditType.OPERATION)
-def classify_issue(issue: str) -> Result:
-    """Classify the issue into a problem class."""
-    return Result(
-        description="issue classified",
-        payload={"problem_class": _classify(issue)},
-    )
+def issue_has_bot_comment(issue: str) -> bool:
+    """True if the pipeline has already commented on this issue (i.e. processed)."""
+    data = json.loads(github.issue_comments(issue))
+    return any(BOT_IDENTIFIER in c.get("body", "") for c in data.get("comments", []))
 
 
 # --- internal steps -------------------------------------------------------
@@ -86,21 +80,3 @@ def _generate_branch_name(issue: str) -> str:
         model="sonnet",
     )
     return name.strip()
-
-
-# Stubbed inline for now; becomes a slash command when the Plan step is built.
-_CLASSIFY_PROMPT = """\
-Classify this GitHub issue into exactly one category: feature, bug, or chore.
-Reply with only the single word, nothing else.
-
-{issue}"""
-
-
-def _classify(issue: str) -> ProblemClass:
-    response = claude.generate(
-        _CLASSIFY_PROMPT.format(issue=issue), model="sonnet"
-    ).strip().lower()
-    for problem_class in ProblemClass:
-        if problem_class.value in response:
-            return problem_class
-    raise ValueError(f"could not classify issue from response: {response!r}")

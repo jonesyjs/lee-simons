@@ -20,16 +20,20 @@ class ConsoleSink(Sink):
 
 
 class FileSink(Sink):
-    """Appends JSON lines to logs/{adw_id}/{filename}.
+    """Appends JSON lines to data/logs/{adw_id}.jsonl.
 
+    One file per run, named by adw_id (permanent folder, file named for the run).
     Opens per write to stay stateless and simple; buffering can come later if
     the per-event open cost ever matters (it won't for pipeline volumes).
     """
 
-    def __init__(self, adw_id: str, filename: str = "events.jsonl", root: str = "logs"):
-        self.path = os.path.join(root, adw_id, filename)
+    def __init__(self, adw_id: str, root: str = os.path.join("data", "logs")):
+        self.path = os.path.join(root, f"{adw_id}.jsonl")
+        # Create the (empty) log file now, at wiring time, so it exists from the
+        # start of the run — before the first event is written.
+        os.makedirs(os.path.dirname(self.path), exist_ok=True)
+        open(self.path, "a", encoding="utf-8").close()
 
     def write(self, formatted: str) -> None:
-        os.makedirs(os.path.dirname(self.path), exist_ok=True)
         with open(self.path, "a", encoding="utf-8") as f:
             f.write(formatted + "\n")

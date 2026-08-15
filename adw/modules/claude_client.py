@@ -12,8 +12,8 @@ class ClaudeClient(SubprocessClient):
         "temporarily unavailable",
     )
 
-    def generate(self, prompt: str, model: str | None = None) -> str:
-        argv = ["claude", "-p", prompt]
+    def generate(self, prompt: str, cwd: str | None = None, model: str | None = None) -> str:
+        argv = ["claude", "-p", prompt, "--dangerously-skip-permissions"]
         if model:
             argv += ["--model", model]
-        return self.call(argv)
+        return self.call(argv, cwd=cwd)
