@@ -36,8 +36,9 @@ def plan(issue: str, issue_id: str, adw_id: str, worktree: str) -> Result:
 
 @audit(type=AuditType.STEP)
 def build(spec_path: str, path: str) -> Result:
-    spec = utils.read_file(os.path.join(path, spec_path))  # spec_path is worktree-relative (data/outputs/specs/…)
-    _implement(spec, path)
+    # Run the /build command directly: it reads the spec at spec_path (relative
+    # to the worktree root = cwd) and implements it in place.
+    claude.generate(f"/build {spec_path}", cwd=path)
     git_ops.commit_work(path, "build: implement spec")
 
     return Result(description="build complete", payload={"spec_path": spec_path})
@@ -64,10 +65,6 @@ def document(path: str, review_summary: list[str]) -> Result:
 
 
 # --- internal agent calls (stubbed; become slash commands) ---
-
-
-def _implement(spec: str, path: str) -> None:
-    pass
 
 
 def _review(diff: str, spec: str) -> tuple[bool, list[str]]:

@@ -28,9 +28,9 @@ def main(issue_id: str, adw_id: str, root: str = ".") -> None:
     update_stage(adw_id, Stage.PLAN, root=root)
     spec_path = workflow_ops.plan(issue, issue_id, adw_id, project_root).payload["spec_path"]
 
-    # # Build: read only the spec, implement it, commit.
-    # update_stage(adw_id, Stage.BUILD, root=root)
-    # workflow_ops.build(spec_path, project_root)
+    # Build: read only the spec, implement it, commit.
+    update_stage(adw_id, Stage.BUILD, root=root)
+    workflow_ops.build(spec_path, project_root)
 
     # # Review: score the build against the spec; post the summary to the issue.
     # update_stage(adw_id, Stage.REVIEW, root=root)
