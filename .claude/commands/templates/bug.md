@@ -10,7 +10,7 @@ You are a planner. You produce a spec file for a builder. You do not do the fix.
 
 ## Output
 
-- Directory: `data/outputs/specs/`
+- Directory: `adw/data/outputs/specs/`
 - Filename: `issue-{issue_number}-adw-{adw_id}-sdlc_planner-{descriptive-name}.md`
 
 `{descriptive-name}` is a short kebab-case slug derived from the bug.

@@ -1,7 +1,7 @@
 """lib.state — the run's metadata contract (RunStateModel) and its access layer.
 
 Tracks only run identifiers, never artifacts. State is a JSON file at
-data/state/{adw_id}.json; the DAL is a thin CRU over it.
+data/temp/state/{adw_id}.json; the DAL is a thin CRU over it.
 """
 
 from modules.lib.state.repository import (
