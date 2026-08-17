@@ -40,11 +40,24 @@ def build(spec_path: str, path: str) -> Result:
 def review(spec_path: str, path: str) -> Result:
     # Run /review directly: it diffs the build commit against its base and judges
     # each spec use case, emitting a JSON verdict.
-    verdict = json.loads(claude.generate(f"/review {spec_path}", cwd=path))
+    verdict = _parse_verdict(claude.generate(f"/review {spec_path}", cwd=path))
 
     # On success the verdict carries review_summary; a gate failure carries error.
     description = verdict.get("review_summary") or verdict.get("error", "review complete")
     return Result(description=description, payload=verdict)
+
+
+def _parse_verdict(output: str) -> dict:
+    """Extract the JSON verdict from /review output.
+
+    /review is asked to emit JSON only, but the model sometimes wraps it in a
+    markdown fence or precedes it with a line of prose. Slice from the first
+    brace to the last so json.loads sees only the object.
+    """
+    start, end = output.find("{"), output.rfind("}")
+    if start == -1 or end == -1:
+        raise ValueError(f"no JSON object in /review output: {output!r}")
+    return json.loads(output[start : end + 1])
 
 
 # @audit(type=AuditType.STEP)
