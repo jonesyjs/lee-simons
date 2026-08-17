@@ -4,21 +4,14 @@ Each step does its own work + logging and returns a Result; the orchestrator
 slices at the adw/ root sequence them.
 """
 
+import json
 import os
-from dataclasses import dataclass
 
 from modules import git_ops, utils
 from modules.claude_client import ClaudeClient
 from modules.lib.log import AuditType, Result, audit
 
 claude = ClaudeClient()
-
-
-@dataclass
-class ReviewResult:
-    success: bool
-    summary: list[str]
-
 
 @audit(type=AuditType.STEP)
 def plan(issue: str, issue_id: str, adw_id: str, worktree: str) -> Result:
@@ -43,32 +36,28 @@ def build(spec_path: str, path: str) -> Result:
 
     return Result(description="build complete", payload={"spec_path": spec_path})
 
-
-def review(spec_path: str, path: str, issue_id: str) -> ReviewResult:
-    diff = git_ops.get_diff(path)
-    spec = utils.read_file(os.path.join(path, spec_path))
-
-    success, summary = _review(diff, spec)
-    git_ops.comment(issue_id, "\n".join(f"- {point}" for point in summary))
-    return ReviewResult(success=success, summary=summary)
-
-
 @audit(type=AuditType.STEP)
-def document(path: str, review_summary: list[str]) -> Result:
-    diff = git_ops.get_diff(path)
-    built, learned = _document(diff, review_summary)
+def review(spec_path: str, path: str) -> Result:
+    # Run /review directly: it diffs the build commit against its base and judges
+    # each spec use case, emitting a JSON verdict.
+    verdict = json.loads(claude.generate(f"/review {spec_path}", cwd=path))
 
-    docs = os.path.join(path, "docs")
-    utils.write_file(os.path.join(docs, "what-was-built.md"), built)
-    utils.write_file(os.path.join(docs, "what-was-learned.md"), learned)
-    return Result(description="documentation created", payload={"docs": docs})
+    # On success the verdict carries review_summary; a gate failure carries error.
+    description = verdict.get("review_summary") or verdict.get("error", "review complete")
+    return Result(description=description, payload=verdict)
 
+
+# @audit(type=AuditType.STEP)
+# def document(path: str, review_summary: list[str]) -> Result:
+#     diff = git_ops.get_diff(path)
+#     built, learned = _document(diff, review_summary)
+
+#     docs = os.path.join(path, "docs")
+#     utils.write_file(os.path.join(docs, "what-was-built.md"), built)
+#     utils.write_file(os.path.join(docs, "what-was-learned.md"), learned)
+#     return Result(description="documentation created", payload={"docs": docs})
 
 # --- internal agent calls (stubbed; become slash commands) ---
-
-
-def _review(diff: str, spec: str) -> tuple[bool, list[str]]:
-    return True, ["implements the spec", "no obvious issues"]
 
 
 def _document(diff: str, review_summary: list[str]) -> tuple[str, str]:

@@ -32,13 +32,13 @@ def main(issue_id: str, adw_id: str, root: str = ".") -> None:
     update_stage(adw_id, Stage.BUILD, root=root)
     workflow_ops.build(spec_path, project_root)
 
-    # # Review: score the build against the spec; post the summary to the issue.
-    # update_stage(adw_id, Stage.REVIEW, root=root)
-    # result = workflow_ops.review(spec_path, project_root, issue_id)
-    # if not result.success:
-    #     return  # escalate to a human
+    # Review: judge the build's diff against the spec's use cases; post to the issue.
+    update_stage(adw_id, Stage.REVIEW, root=root)
+    result = workflow_ops.review(spec_path, project_root)
+    if not result.payload.get("success"):
+        return  # escalate to a human
 
-    # # Document: write "what was built" + "what was learned".
+    # Document: write "what was built" + "what was learned".
     # update_stage(adw_id, Stage.DOCUMENT, root=root)
     # workflow_ops.document(project_root, result.summary)
 

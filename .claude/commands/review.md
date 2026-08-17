@@ -1,83 +1,77 @@
+---
+name: review
+description: Review a build's diff against the use cases in its spec — verify each use case (first→last) is satisfied and flag out-of-scope drift. Use after a build step to gate whether the changes match what was planned. Emits a JSON verdict; it does not edit code.
+argument-hint: <spec-path>
+---
+
 # Review
 
-Follow the `Instructions` below to **review work done against a specification file** (spec/*.md) to ensure implemented features match requirements. Use the spec file to understand the requirements and then use the git diff if available to understand the changes made. Capture screenshots of critical functionality paths as documented in the `Instructions` section. If there are issues, report them if not then report success.
+Review a build's diff against the use cases in its spec. You are a **reviewer, not an author** — you assess whether the implementation satisfies each use case and whether it stayed in scope. You judge against the spec's use cases only; you never edit code.
 
 ## Variables
 
-adw_id: $1
-spec_file: $2
-agent_name: $3 if provided, otherwise use 'review_agent'
-review_image_dir: `<absolute path to codebase>/agents/<adw_id>/<agent_name>/review_img/`
+- `spec` — `$1`, path to the plan spec whose use cases are the review requirements.
+- `diff` — the changes under review: the build commit's diff, obtained with `git diff HEAD~1 HEAD -- . ':(exclude)adw/data'`. The build lands as a single commit atop the branch point, so `HEAD~1` is the base; `adw/data` holds pipeline bookkeeping (spec, state, logs), not reviewable work, so it is excluded.
 
 ## Instructions
 
-- Check current git branch using `git branch` to understand context
-- Run `git diff origin/main` to see all changes made in current branch. Continue even if there are no changes related to the spec file.
-- Find the spec file by looking for spec/*.md files in the diff that match the current branch name
-- Read the identified spec file to understand requirements
-- IMPORTANT: If the work can be validated by UI validation then (if not skip the section):
-  - Look for corresponding e2e test files in ./claude/commands/e2e/test_*.md that mirror the feature name
-  - Use e2e test files only as navigation guides for screenshot locations, not for other purposes
-  - IMPORTANT: To be clear, we're not testing. We know the functionality works. We're reviewing the implementation against the spec to make sure it matches what was requested.
-  - IMPORTANT: Take screen shots along the way to showcase the new functionality and any issues you find
-    - Capture visual proof of working features through targeted screenshots
-    - Navigate to the application and capture screenshots of only the critical paths based on the spec
-    - Compare implemented changes with spec requirements to verify correctness
-    - Do not take screenshots of the entire process, only the critical points.
-    - IMPORTANT: Aim for `1-5` screenshots to showcase that the new functionality works as specified.
-    - If there is a review issue, take a screenshot of the issue and add it to the `review_issues` array. Describe the issue, resolution, and severity.
-    - Number your screenshots in the order they are taken like `01_<descriptive name>.png`, `02_<descriptive name>.png`, etc.
-    - IMPORTANT: Be absolutely sure to take a screen shot of the critical point of the new functionality
-    - IMPORTANT: Copy all screenshots to the provided `review_image_dir`
-    - IMPORTANT: Store the screenshots in the `review_image_dir` and be sure to use full absolute paths.
-    - Focus only on critical functionality paths - avoid unnecessary screenshots
-    - Ensure screenshots clearly demonstrate that features work as specified
-    - Use descriptive filenames that indicate what part of the change is being verified
-- IMPORTANT: Issue Severity Guidelines
-  - Think hard about the impact of the issue on the feature and the user
-  - Guidelines:
-    - `skippable` - the issue is non-blocker for the work to be released but is still a problem
-    - `tech_debt` - the issue is non-blocker for the work to be released but will create technical debt that should be addressed in the future
-    - `blocker` - the issue is a blocker for the work to be released and should be addressed immediately. It will harm the user experience or will not function as expected.
-- IMPORTANT: Return ONLY the JSON array with test results
-  - IMPORTANT: Output your result in JSON format based on the `Report` section below.
-  - IMPORTANT: Do not include any additional text, explanations, or markdown formatting
-  - We'll immediately run JSON.parse() on the output, so make sure it's valid JSON
-- Ultra think as you work through the review process. Focus on the critical functionality paths and the user experience. Don't report issues if they are not critical to the feature.
+- **Judge against the use cases only** — the spec's use cases are the requirements; don't invent new ones or drop any.
+- **Cite evidence** — every verdict names the `file:line` in the diff that supports it; no unsupported verdicts.
+- **Walk in spec order** — process use cases first → last (simplest → complex); never reorder.
+- **Separate the two findings** — a *Missing* use case (required, unimplemented) is distinct from an *Out-of-scope* change (diff content no use case requires).
+- **Scope to the diff** — assess what changed, not the whole codebase.
+- **Review only, never edit** — this command emits a verdict, not a fix.
+- **Emit valid JSON only** — the output is parsed with `json.loads`; return the `Report` object and nothing else.
 
-## Setup
+## Phases
 
-IMPORTANT: Read and **Execute** `.claude/commands/prepare_app.md` now to prepare the application for the review.
+| Phase | Action | Gate — pass to advance | Failure |
+|---|---|---|---|
+| **Extract** | Read `spec`; extract its use cases verbatim as an ordered requirements list, first → last. | Is every use case captured as a discrete, checkable requirement? | `EXIT_NO_USE_CASES` |
+| **Review** | For each use case in order, verify it against `diff`: find the change that implements it, assign a verdict (`Satisfied` / `Partial` / `Missing`) with `file:line` evidence, and record which diff hunks it consumes. Loop until every use case is judged. | Is there a non-empty diff, and does every use case carry an evidenced verdict? | `EXIT_EMPTY_DIFF` |
+| **Scope** | Reconcile both directions: a use case with no implementing change → `Missing` (gap); a diff hunk consumed by no use case → out-of-scope (drift). | Is every diff hunk either traced to a use case or flagged out-of-scope? | — |
+
+### Failure Modes
+
+| Exit Code | Meaning | Recommended Action |
+|---|---|---|
+| `EXIT_NO_USE_CASES` | The spec contains no extractable use cases to review against | Return to planning — there is nothing to review |
+| `EXIT_EMPTY_DIFF` | There are no changes to review | The build produced no diff; re-run or fail the build step |
 
 ## Report
 
-- IMPORTANT: Return results exclusively as a JSON array based on the `Output Structure` section below.
-- `success` should be `true` if there are NO BLOCKING issues (implementation matches spec for critical functionality)
-- `success` should be `false` ONLY if there are BLOCKING issues that prevent the work from being released
-- `review_issues` can contain issues of any severity (skippable, tech_debt, or blocker)
-- `screenshots` should ALWAYS contain paths to screenshots showcasing the new functionality, regardless of success status. Use full absolute paths.
-- This allows subsequent agents to quickly identify and resolve blocking errors while documenting all issues
-
-### Output Structure
+Return **JSON only** — no preamble, no markdown fences. On success:
 
 ```json
 {
-    success: "boolean - true if there are NO BLOCKING issues (can have skippable/tech_debt issues), false if there are BLOCKING issues",
-    review_summary: "string - 2-4 sentences describing what was built and whether it matches the spec. Written as if reporting during a standup meeting. Example: 'The natural language query feature has been implemented with drag-and-drop file upload and interactive table display. The implementation matches the spec requirements for SQL injection protection and supports both CSV and JSON formats. Minor UI improvements could be made but all core functionality is working as specified.'",
-    review_issues: [
-        {
-            "review_issue_number": "number - the issue number based on the index of this issue",
-            "screenshot_path": "string - /absolute/path/to/screenshot_that_shows_review_issue.png",
-            "issue_description": "string - description of the issue",
-            "issue_resolution": "string - description of the resolution",
-            "issue_severity": "string - severity of the issue between 'skippable', 'tech_debt', 'blocker'"
-        },
-        ...
-    ],
-    screenshots: [
-        "string - /absolute/path/to/screenshot_showcasing_functionality.png",
-        "string - /absolute/path/to/screenshot_showcasing_functionality.png",
-        "...",
-    ]
+  "success": true,
+  "verdict": "APPROVED",
+  "use_cases": [
+    { "name": "<use case, verbatim from spec>", "verdict": "Satisfied", "evidence": "path/to/file.py:42" }
+  ],
+  "out_of_scope": [
+    { "change": "<what changed that no use case requires>", "evidence": "path/to/file.py:99" }
+  ],
+  "review_summary": "1–3 sentences: what holds, what doesn't, the single most important thing to fix."
+}
+```
+
+Field rules:
+
+| Field | Values / Rule |
+|---|---|
+| `success` | `true` iff every use case is `Satisfied` and `out_of_scope` is empty; otherwise `false` |
+| `verdict` | `APPROVED` when `success` is `true`; else `CHANGES_REQUESTED` |
+| `use_cases[].verdict` | one of `Satisfied` / `Partial` / `Missing` |
+| `use_cases[].evidence` | `file:line` from the diff, or `""` when `Missing` |
+| `out_of_scope` | `[]` when there is no drift |
+
+On a gate failure, return the exit object instead (still valid JSON):
+
+```json
+{
+  "success": false,
+  "verdict": "EXIT_NO_USE_CASES",
+  "error": "<what was reviewed, and what is missing or malformed that prevents a verdict>"
 }
 ```
