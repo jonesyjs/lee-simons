@@ -47,19 +47,6 @@ def review(spec_path: str, path: str) -> Result:
     return Result(description=description, payload=verdict)
 
 
-def _parse_verdict(output: str) -> dict:
-    """Extract the JSON verdict from /review output.
-
-    /review is asked to emit JSON only, but the model sometimes wraps it in a
-    markdown fence or precedes it with a line of prose. Slice from the first
-    brace to the last so json.loads sees only the object.
-    """
-    start, end = output.find("{"), output.rfind("}")
-    if start == -1 or end == -1:
-        raise ValueError(f"no JSON object in /review output: {output!r}")
-    return json.loads(output[start : end + 1])
-
-
 # @audit(type=AuditType.STEP)
 # def document(path: str, review_summary: list[str]) -> Result:
 #     diff = git_ops.get_diff(path)
@@ -75,3 +62,16 @@ def _parse_verdict(output: str) -> dict:
 
 def _document(diff: str, review_summary: list[str]) -> tuple[str, str]:
     return "# What was built\n\n(diff summary)\n", "# What was learned\n\n(process notes)\n"
+
+
+def _parse_verdict(output: str) -> dict:
+    """Extract the JSON verdict from /review output.
+
+    /review is asked to emit JSON only, but the model sometimes wraps it in a
+    markdown fence or precedes it with a line of prose. Slice from the first
+    brace to the last so json.loads sees only the object.
+    """
+    start, end = output.find("{"), output.rfind("}")
+    if start == -1 or end == -1:
+        raise ValueError(f"no JSON object in /review output: {output!r}")
+    return json.loads(output[start : end + 1])
