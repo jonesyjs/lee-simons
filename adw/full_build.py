@@ -32,15 +32,16 @@ def main(issue_id: str, adw_id: str, root: str = ".") -> None:
     update_stage(adw_id, Stage.BUILD, root=root)
     workflow_ops.build(spec_path, project_root)
 
-    # Review: judge the build's diff against the spec's use cases; post to the issue.
+    # Review: judge the build's diff against the spec's use cases; post to the
+    # issue and persist the verdict for the document step to read.
     update_stage(adw_id, Stage.REVIEW, root=root)
-    result = workflow_ops.review(spec_path, project_root)
+    result = workflow_ops.review(spec_path, adw_id, project_root)
     if not result.payload.get("success"):
         return  # escalate to a human
 
-    # Document: write "what was built" + "what was learned".
-    # update_stage(adw_id, Stage.DOCUMENT, root=root)
-    # workflow_ops.document(project_root, result.summary)
+    # Document: one entry per use case, from the verdict, into app_docs/.
+    update_stage(adw_id, Stage.DOCUMENT, root=root)
+    workflow_ops.document(spec_path, adw_id, project_root)
 
 
 if __name__ == "__main__":

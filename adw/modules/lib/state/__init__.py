@@ -12,7 +12,7 @@ from modules.lib.state.repository import (
     update,
     update_stage,
 )
-from modules.lib.state.paths import state_path, worktree_dir
+from modules.lib.state.paths import state_path, verdict_path, worktree_dir
 from modules.lib.state.run_state import RunStateModel
 
 __all__ = [
@@ -24,5 +24,6 @@ __all__ = [
     "StateNotFound",
     "InvalidState",
     "state_path",
+    "verdict_path",
     "worktree_dir",
 ]

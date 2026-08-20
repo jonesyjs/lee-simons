@@ -32,9 +32,9 @@ def create_branch(issue: str, path: str) -> Result:
     return Result(description="branch created", payload={"branch": branch})
 
 
-def get_diff(path: str) -> str:
-    """Return the git diff of the work in a worktree."""
-    return git.diff(path)
+# No get_diff here on purpose: /review and /document each obtain the diff they
+# need, against the base ref they care about. A bare `git diff` would return
+# nothing anyway, since build() commits before either of them runs.
 
 
 def commit_work(path: str, message: str) -> str:
