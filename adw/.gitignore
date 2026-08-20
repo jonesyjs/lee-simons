@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.venv/
+
+# Run data (state, logs, outputs) is intentionally TRACKED — kept for cross-run
+# observability, regardless of pipeline instance. Nothing under data/ is ignored.

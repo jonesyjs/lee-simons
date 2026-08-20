@@ -43,3 +43,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# claude local settings (personal)
+.claude/settings.local.json
+
+# ADW worktrees (project-root code checkouts, one per run)
+trees/
