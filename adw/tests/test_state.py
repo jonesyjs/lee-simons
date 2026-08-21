@@ -44,7 +44,7 @@ class TestRunState(unittest.TestCase):
 class TestPaths(unittest.TestCase):
     def test_state_path(self):
         self.assertEqual(
-            state_path("abc", root="/tmp"), "/tmp/data/state/abc.json"
+            state_path("abc", root="/tmp"), "/tmp/data/temp/state/abc.json"
         )
 
 
