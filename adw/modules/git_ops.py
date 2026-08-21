@@ -6,6 +6,7 @@ intent; the clients below are blind to the goal. Each public operation returns a
 """
 
 import json
+import re
 
 from modules.claude_client import ClaudeClient
 from modules.git_client import GitClient
@@ -79,4 +80,19 @@ def _generate_branch_name(issue: str) -> str:
         f"Reply with only the name, nothing else:\n\n{issue}",
         model="sonnet",
     )
-    return name.strip()
+    return _slugify_branch_name(name)
+
+
+def _slugify_branch_name(name: str) -> str:
+    """Coerce the model's reply into a safe kebab-case branch name.
+
+    The model is asked for a bare name but sometimes wraps it in backticks or
+    quotes, or adds a line of prose. Take the first line, lowercase it, and
+    collapse every run of non-alphanumerics into a single hyphen — so
+    ```fix-readme``` and ``"Fix: README"`` both land on ``fix-readme``.
+    """
+    first_line = name.strip().splitlines()[0] if name.strip() else ""
+    slug = re.sub(r"[^a-z0-9]+", "-", first_line.lower()).strip("-")
+    if not slug:
+        raise ValueError(f"could not derive a branch name from: {name!r}")
+    return slug
